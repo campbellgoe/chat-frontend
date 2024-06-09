@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import io from 'socket.io-client';
 
-const socket = io('http://localhost:3000'); // Use your server's URL in production
+const socket = io(process.env.SOCKET_SERVER_URL); // Use your server's URL in production
 
 const Chat = () => {
     const [message, setMessage] = useState('');
