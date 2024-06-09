@@ -1,49 +1,49 @@
 // @ts-nocheck
-"use client"
-import { useEffect, useState } from 'react';
-import io from 'socket.io-client';
 
-const socket = io(process.env.SOCKET_SERVER_URL); // Use your server's URL in production
+"use client";
 
-const Chat = () => {
-    const [message, setMessage] = useState('');
-    const [messages, setMessages] = useState([]);
 
-    useEffect(() => {
-        socket.on('chat_message', (msg) => {
-            setMessages((prevMessages) => [...prevMessages, msg]);
-        });
+import * as Ably from 'ably';
+import { AblyProvider, useChannel, useConnectionStateListener } from 'ably/react';
+import { useState } from 'react';
 
-        return () => {
-            socket.off('chat_message');
-        };
-    }, []);
+export default function App() {
 
-    const sendMessage = (e) => {
-        e.preventDefault();
-        if (message.trim()) {
-            socket.emit('chat_message', message);
-            setMessage('');
-        }
-    };
+  // Connect to Ably using the AblyProvider component and your API key
+  const client = new Ably.Realtime.Promise({ key: process.env.ABLY_API_KEY });
 
-    return (
-        <div>
-            <ul>
-                {messages.map((msg, index) => (
-                    <li key={index}>{msg}</li>
-                ))}
-            </ul>
-            <form onSubmit={sendMessage}>
-                <input
-                    type="text"
-                    value={message}
-                    onChange={(e) => setMessage(e.target.value)}
-                />
-                <button type="submit">Send</button>
-            </form>
-        </div>
-    );
-};
+  return (
+    <AblyProvider client={client}>
+      <AblyPubSub />
+    </AblyProvider>
+  );
+}
 
-export default Chat;
+function AblyPubSub() {
+    const [message, setMessage] = useState('')
+  const [messages, setMessages] = useState([]);
+
+  useConnectionStateListener('connected', () => {
+    console.log('Connected to Ably!');
+  });
+
+  // Create a channel called 'get-started' and subscribe to all messages with the name 'first' using the useChannel hook
+  const { channel } = useChannel('get-started', 'first', (message) => {
+    setMessages(previousMessages => [...previousMessages, message]);
+  });
+
+  return (
+    // Publish a message with the name 'first' and the contents 'Here is my first message!' when the 'Publish' button is clicked
+    <div>
+        <input value={message} onChange={e => setMessage(e.target.value)} />
+      <button onClick={() => { if(message) channel.publish('first', message) }}>
+        Publish
+      </button>
+      {
+        messages.map(message => {
+          return <p key={message.id}>{message.data.body}</p>
+        })
+      }
+    </div>
+  );
+}
